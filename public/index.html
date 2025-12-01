@@ -1,0 +1,342 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Airport Fuel Finder</title>
+
+        <script src="https://cdn.tailwindcss.com"></script>
+
+        <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+        <style>
+            /* Palette (greens) */
+            :root {
+                --green-1: #c9f350; /* (201,243,80) */
+                --green-2: #95d765; /* (149,215,101) */
+                --green-3: #6ea869; /* (110,168,105) */
+                --green-4: #2e7555; /* (46,117,85) */
+                --green-5: #1d4f33; /* (29,79,51) */
+
+                --border-gray: #d1d5db; /* tailwind gray-300 */
+                --bg-gray-50: #f9fafb; /* tailwind gray-50 */
+            }
+
+            html,
+            body {
+                background-color: var(--bg-gray-50);
+            }
+
+            /* Fuel Type Selector Pills */
+            .fuel-pill {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                border-radius: 0.75rem; /* rounded-xl */
+                border: 2px solid var(--border-gray);
+                background: #ffffff;
+                padding: 1rem 1.5rem; /* px-6 py-4 */
+                cursor: pointer;
+                transition: all 0.2s ease;
+                text-align: center;
+            }
+            .fuel-pill:hover {
+                border-color: var(--green-2);
+            }
+            .fuel-pill.active {
+                border-color: var(--green-4);
+                background-color: rgba(46, 117, 85, 0.06);
+            }
+
+            /* Primary button style (replaces orange buttons) */
+            .btn-primary {
+                background-color: var(--green-4);
+                color: white;
+                font-weight: 600;
+                border-radius: 0.75rem;
+                box-shadow:
+                    0 10px 15px -3px rgba(46, 117, 85, 0.15),
+                    0 4px 6px -4px rgba(0, 0, 0, 0.08);
+                transition:
+                    background-color 0.15s ease,
+                    box-shadow 0.15s ease;
+            }
+            .btn-primary:hover {
+                background-color: var(--green-5);
+                box-shadow:
+                    0 12px 20px -5px rgba(29, 79, 51, 0.18),
+                    0 6px 8px -6px rgba(0, 0, 0, 0.08);
+            }
+
+            /* Secondary neutral button */
+            .btn-neutral {
+                background-color: #e5e7eb; /* tailwind gray-200 */
+                color: #374151; /* tailwind gray-700 */
+                font-weight: 600;
+                border-radius: 0.75rem;
+                transition: background-color 0.15s ease;
+            }
+            .btn-neutral:hover {
+                background-color: #d1d5db; /* tailwind gray-300 */
+            }
+
+            /* Map expand button override */
+            .map-expand {
+                background: white;
+                border: 2px solid var(--border-gray);
+                border-radius: 0.5rem;
+                padding: 0.5rem 0.75rem;
+                box-shadow: 0 4px 6px rgba(15, 23, 42, 0.05);
+                transition:
+                    background-color 0.12s ease,
+                    border-color 0.12s ease;
+                font-size: 0.875rem;
+                font-weight: 500;
+            }
+            .map-expand:hover {
+                background-color: #f3f4f6; /* tailwind gray-50 */
+                border-color: var(--green-2);
+            }
+
+            /* Slider (green gradient) */
+            input[type="range"] {
+                width: 100%;
+                height: 0.75rem;
+                border-radius: 9999px;
+                appearance: none;
+                cursor: pointer;
+                background-image: linear-gradient(
+                    90deg,
+                    var(--green-1),
+                    var(--green-2)
+                );
+                background-size: 100% 100%;
+            }
+            input[type="range"]::-webkit-slider-thumb {
+                appearance: none;
+                height: 1.5rem;
+                width: 1.5rem;
+                border-radius: 9999px;
+                background: var(--green-4);
+                box-shadow: 0 6px 12px rgba(46, 117, 85, 0.25);
+                border: 2px solid white;
+                cursor: grab;
+            }
+            input[type="range"]::-webkit-slider-thumb:active {
+                cursor: grabbing;
+                transform: scale(1.07);
+            }
+            input[type="range"]::-moz-range-thumb {
+                height: 1.5rem;
+                width: 1.5rem;
+                border-radius: 9999px;
+                background: var(--green-4);
+                box-shadow: 0 6px 12px rgba(46, 117, 85, 0.25);
+                border: 2px solid white;
+                cursor: grab;
+            }
+            input[type="range"]::-moz-range-thumb:active {
+                cursor: grabbing;
+            }
+
+            /* Small utility classes used below */
+            .text-primary {
+                color: var(--green-4);
+            }
+            .text-muted {
+                color: #6b7280; /* tailwind gray-500 */
+            }
+            .card {
+                background: white;
+                padding: 1.5rem;
+                border-radius: 1rem;
+                box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+                border: 1px solid #f3f4f6; /* tailwind gray-100 */
+            }
+
+            /* Map container border */
+            #map {
+                border-radius: 0.75rem;
+                box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+                border: 2px solid #e5e7eb; /* tailwind gray-200 */
+            }
+
+            /* Accessibility focus for fuel pills */
+            .fuel-pill:focus {
+                outline: none;
+                box-shadow: 0 0 0 4px rgba(46, 117, 85, 0.07);
+            }
+
+            /* Remove selection highlighting inside buttons on double click */
+            .fuel-pill,
+            .btn-primary,
+            .btn-neutral {
+                -webkit-tap-highlight-color: transparent;
+            }
+        </style>
+    </head>
+
+    <body class="bg-gray-50">
+        <div class="max-w-5xl mx-auto p-6 space-y-10">
+            <!-- Title -->
+            <div class="text-center">
+                <h1 class="text-3xl font-bold text-gray-900">
+                    Airport Fuel Finder
+                </h1>
+                <p class="text-gray-600">
+                    Search airports by fuel type, distance, and map region.
+                </p>
+            </div>
+
+            <!-- COMBINED FILTER CARD -->
+            <div class="card space-y-6">
+                <!-- Fuel Type -->
+                <div>
+                    <div class="text-gray-800 font-semibold mb-4">
+                        Fuel Type
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4">
+                        <button
+                            id="fuel-mogas"
+                            class="fuel-pill group"
+                            type="button"
+                            aria-pressed="false"
+                        >
+                            <div class="font-bold text-lg text-gray-800">
+                                MoGas
+                            </div>
+                            <div class="text-xs text-muted">Auto gasoline</div>
+                        </button>
+
+                        <button
+                            id="fuel-100ll"
+                            class="fuel-pill group"
+                            type="button"
+                            aria-pressed="false"
+                        >
+                            <div class="font-bold text-lg text-gray-800">
+                                100LL
+                            </div>
+                            <div class="text-xs text-muted">AvGas Low-lead</div>
+                        </button>
+
+                        <button
+                            id="fuel-jet"
+                            class="fuel-pill group"
+                            type="button"
+                            aria-pressed="false"
+                        >
+                            <div class="font-bold text-lg text-gray-800">
+                                Jet-A
+                            </div>
+                            <div class="text-xs text-muted">Turbine fuel</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Distance Slider -->
+                <div>
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="text-gray-800 font-semibold">
+                            Search Radius
+                        </div>
+                        <label
+                            class="flex items-center gap-2 text-sm cursor-pointer"
+                        >
+                            <input
+                                id="showCircle"
+                                type="checkbox"
+                                class="w-4 h-4 rounded text-[var(--green-4)] focus:ring-[var(--green-4)] cursor-pointer"
+                            />
+                            <span class="text-gray-600"
+                                >Display radius circle</span
+                            >
+                        </label>
+                    </div>
+
+                    <input
+                        id="radius-slider"
+                        type="range"
+                        min="50"
+                        max="1000"
+                        step="10"
+                        value="200"
+                    />
+                    <div class="flex justify-between items-center mt-3">
+                        <div
+                            id="radius-display"
+                            class="text-primary font-bold text-xl"
+                        >
+                            200 miles
+                        </div>
+                        <div class="text-muted text-sm">50 - 1000 miles</div>
+                    </div>
+                </div>
+
+                <!-- Search Mode Buttons -->
+                <div class="grid grid-cols-2 gap-3">
+                    <button
+                        id="viewModeBtn"
+                        class="py-3 rounded-xl btn-primary shadow-lg hover:shadow-xl transition-all"
+                    >
+                        Search Map View
+                    </button>
+                    <button
+                        id="listAllBtn"
+                        class="py-3 rounded-xl btn-neutral hover:bg-gray-300 transition-all"
+                    >
+                        List All Airports
+                    </button>
+                </div>
+            </div>
+
+            <!-- Map -->
+            <div class="card">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="text-gray-700 font-semibold">Map</div>
+                    <div class="text-sm text-gray-600">
+                        Click anywhere to set search center
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <button
+                        id="expandMap"
+                        class="absolute top-3 right-3 z-50 map-expand text-sm font-medium transition-all"
+                        type="button"
+                    >
+                        Expand Map
+                    </button>
+
+                    <div id="map" class="w-full h-[350px]"></div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div class="card">
+                <div class="text-gray-700 font-semibold mb-4">
+                    Airports Found
+                    <span id="resultCount" class="text-gray-500"></span>
+                </div>
+
+                <div id="list" class="space-y-4"></div>
+
+                <div class="text-center mt-4">
+                    <button
+                        id="loadMoreBtn"
+                        class="px-5 py-2 rounded-xl btn-neutral hover:bg-gray-300 text-gray-700 font-medium transition-all"
+                    >
+                        Load More
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script src="./js/main.js"></script>
+    </body>
+</html>

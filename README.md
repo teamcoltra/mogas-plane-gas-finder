@@ -109,9 +109,5 @@ Parser notes:
 
 ---
 
-If you want, I can add:
-- A ready-to-use `update.yml` + `pages.yml` pair committed into `.github/workflows/`.  
-- A small JSON schema and CI validation step for `public/airports.json`.  
-- A short script to help create and set a PAT secret securely using the CLI.
-
-Tell me which of these you want next and I will draft the files for you.
+## AI Disclaimer
+This project was built using AI tools and techniques. The design was desgined by me, the project idea and things were designed by me. Most impelmenation was done by AI.

@@ -1,3 +1,3 @@
 module github.com/teamcoltra/mogas-plane-gas-finder/fetch
 
-go 1.23
+go 1.25
